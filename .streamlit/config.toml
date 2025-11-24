@@ -1,0 +1,24 @@
+# .streamlit/config.toml
+
+[theme]
+# Primary Color (The color of buttons and sliders)
+primaryColor = "#0D9488"  # Teal color
+
+# Background Color (Main area)
+backgroundColor = "#FFFFFF"
+
+# Secondary Background Color (Sidebar color)
+secondaryBackgroundColor = "#F0FDF4" # Very light green/mint
+
+# Text Color
+textColor = "#1F2937" # Dark Gray (better for reading than pure black)
+
+# Font Family (Sans serif looks more like an app)
+font = "sans serif"
+
+[client]
+# This hides the default "Manage App" menu in the corner for a cleaner look
+toolbarMode = "minimal"
+
+# This hides the side navigation if you want to use Top Nav
+# showSidebarNavigation = false  <-- Uncomment this line ONLY if using top nav
