@@ -1,22 +1,32 @@
 import streamlit as st
+# Import the logic functions from our service file
 from services.jamai_service import chat_with_jamai
 
-st.title("💬 Chat")
+st.set_page_config(page_title="JamAI Super App", page_icon="⚡")
+st.title("⚡ JamAI Super App")
 
-# Show history
-for msg in st.session_state['chat_history']:
-    st.chat_message(msg["role"]).write(msg["content"])
+# 1. Initialize Chat History (so messages don't disappear)
+if "messages" not in st.session_state:
+    st.session_state.messages = []
 
-# Handle Input
-if prompt := st.chat_input("Ask JamAI..."):
-    # 1. Show user message
-    st.chat_message("user").write(prompt)
-    st.session_state['chat_history'].append({"role": "user", "content": prompt})
-    
-    # 2. Get response from JamAI Service
+# 2. Display Existing Chat History
+for message in st.session_state.messages:
+    with st.chat_message(message["role"]):
+        st.markdown(message["content"])
+
+# 3. Handle New User Input
+if prompt := st.chat_input("Ask JamAI something..."):
+    # A. Display User Message
+    st.chat_message("user").markdown(prompt)
+    st.session_state.messages.append({"role": "user", "content": prompt})
+
+    # B. Call Backend Logic (The "Simplified" part)
     with st.spinner("Thinking..."):
-        response_text = chat_with_jamai(prompt)
-    
-    # 3. Show AI message
-    st.chat_message("assistant").write(response_text)
-    st.session_state['chat_history'].append({"role": "assistant", "content": response_text})
+        try:
+            response = chat_with_jamai(prompt)
+        except Exception as e:
+            response = f"❌ An error occurred: {e}"
+
+    # C. Display AI Response
+    st.chat_message("assistant").markdown(response)
+    st.session_state.messages.append({"role": "assistant", "content": response})

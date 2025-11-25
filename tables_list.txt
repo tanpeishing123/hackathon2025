@@ -1,0 +1,11 @@
+Client initialized successfully.
+--- ACTION TABLES ---
+ID: table1 | Type: action
+ID: safety_officer | Type: action
+ID: xray | Type: action
+--- KNOWLEDGE TABLES ---
+ID: 123 | Type: knowledge
+--- CHAT TABLES ---
+ID: cik manis | Type: chat
+ID: chat1 | Type: chat
+------------------------
