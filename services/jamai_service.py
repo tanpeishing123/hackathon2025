@@ -1,6 +1,7 @@
 import streamlit as st
 import tempfile
 import os
+import re
 from jamaibase import JamAI, protocol as p
 
 # ==========================================
@@ -19,14 +20,17 @@ CHAT_COLS = {
 
 # 3. IMAGE TABLE Config
 # Make sure your table in JamAI is an "Action Table" using a Vision model (e.g. GPT-4o)
-IMAGE_TABLE_ID = "food-analyzer" 
+IMAGE_TABLE_ID = "scanner" 
 IMAGE_COLS = {
-    "image_input": "Image",          # Input column (Type: Image)
-    "output_name": "Food Name",      # Output column 1 (Type: Text)
-    "output_sugar": "Sugar Content", # Output column 2 (Type: Text/Number)
-    "output_risk": "Risk Level"      # Output column 3 (Type: Text)
+    "image_input": "image",
+    "output_name": "product_name",             # <-- NEW COLUMN
+    "output_sugar": "sugar_per_serving",
+    "output_fat": "saturated_fat_per_serving",
+    "output_grade": "grade",
+    "output_comment": "comment",               # <-- NEW COLUMN
+    "output_isBeverage": "isBeverage",
 }
-
+api_key = st.secrets.get("JAMAI_API_KEY")
 # ==========================================
 # 🔌 CLIENT INITIALIZATION
 # ==========================================
@@ -83,58 +87,94 @@ def chat_with_jamai(user_text):
 # ==========================================
 # 📸 LOGIC 2: IMAGE ANALYZER
 # ==========================================
+def clean_number(value):
+    """
+    Helper: Extracts the first number from a string.
+    e.g., "12.5g" -> 12.5, "approx 4 grams" -> 4.0
+    """
+    if not value:
+        return 0.0
+    if isinstance(value, (int, float)):
+        return float(value)
+        
+    # Regex to find integer or decimal numbers
+    match = re.search(r"(\d+(\.\d+)?)", str(value))
+    if match:
+        return float(match.group(1))
+    return 0.0
+
 def analyze_image_with_jamai(uploaded_file):
     """
-    Uploads an image to JamAI, sends it to 'food-analyzer' table, 
-    and returns specific column data (Name, Sugar, Risk).
+    Sends image to JamAI Base table and returns formatted dict for UI.
     """
-    client = init_client()
-    if not client: return None
+    if not api_key or not PROJECT_ID:
+        st.error("❌ Missing API Configuration.")
+        return None
 
-    tmp_path = None
+    jam = JamAI(token=api_key, project_id=PROJECT_ID)
+
+    temp_filename = f"temp_{uploaded_file.name}"
+    with open(temp_filename, "wb") as f:
+        f.write(uploaded_file.getbuffer())
+
     try:
-        # STEP 1: Save Streamlit file to a temp file (JamAI needs a file path on disk)
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as tmp_file:
-            tmp_file.write(uploaded_file.getvalue())
-            tmp_path = tmp_file.name
+        # Upload & Add Row
+        upload_response = jam.file.upload_file(temp_filename)
+        image_uri = upload_response.uri
 
-        # STEP 2: Upload file to JamAI Cloud Storage
-        # This returns a URI (e.g., "file://...") that the Table can read
-        upload_res = client.file.upload_file(tmp_path)
-        image_uri = upload_res.uri
-
-        # STEP 3: Add row to Image Table with the URI
-        response = client.table.add_table_rows(
+        completion = jam.table.add_table_rows(
             "action",
             p.RowAddRequest(
                 table_id=IMAGE_TABLE_ID,
-                data=[{IMAGE_COLS["image_input"]: image_uri}],
+                data=[{ IMAGE_COLS["image_input"]: image_uri }],
                 stream=False
             )
         )
 
-        # STEP 4: Parse Results
-        if response and response.rows:
-            row_data = response.rows[0].columns
+        if os.path.exists(temp_filename):
+            os.remove(temp_filename)
+
+        if completion.rows:
+            row = completion.rows[0].columns
             
-            # Helper to safely get value from column
             def get_val(col_name):
-                item = row_data.get(col_name)
-                return item.value if hasattr(item, 'value') else str(item)
+                cell = row.get(col_name)
+                if not cell: return "0"
+                if hasattr(cell, "choices") and len(cell.choices) > 0:
+                    return cell.choices[0].message.content
+                if hasattr(cell, "value"):
+                    return cell.value
+                return str(cell)
+
+            raw_name    = get_val(IMAGE_COLS["output_name"])
+            raw_sugar   = get_val(IMAGE_COLS["output_sugar"])
+            raw_fat     = get_val(IMAGE_COLS["output_fat"])
+            raw_grade   = get_val(IMAGE_COLS["output_grade"])
+            raw_comment = get_val(IMAGE_COLS["output_comment"])
+            raw_is_bev  = get_val(IMAGE_COLS["output_isBeverage"]) 
+
+            # LOGIC: Check if it's a beverage. 
+            # Handling strict Boolean or "True"/"False" string.
+            if isinstance(raw_is_bev, bool):
+                is_valid_beverage = raw_is_bev
+            else:
+                # Check strictly for string "true" (case-insensitive)
+                is_valid_beverage = str(raw_is_bev).strip().lower() == 'true'
 
             return {
-                "food_name": get_val(IMAGE_COLS["output_name"]),
-                "sugar": get_val(IMAGE_COLS["output_sugar"]),
-                "risk": get_val(IMAGE_COLS["output_risk"])
+                "name": str(raw_name).strip(),
+                "grade": str(raw_grade).strip().upper(),
+                "sugar_g": clean_number(raw_sugar),
+                "fat_g": clean_number(raw_fat),
+                "comment": str(raw_comment).strip(),
+                "is_beverage": is_valid_beverage # <-- Return the flag
             }
+        else:
+            st.error("❌ JamAI returned no rows.")
+            return None
             
-        return None
-
     except Exception as e:
-        st.error(f"❌ Image Analysis Error: {str(e)}")
+        st.error(f"❌ Image Analysis Error: {e}")
+        if os.path.exists(temp_filename):
+            os.remove(temp_filename)
         return None
-        
-    finally:
-        # Cleanup: Delete the temp file from local server to save space
-        if tmp_path and os.path.exists(tmp_path):
-            os.remove(tmp_path)
