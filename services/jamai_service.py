@@ -2,6 +2,7 @@ import streamlit as st
 import tempfile
 import os
 import re
+import json
 from jamaibase import JamAI, protocol as p
 
 # ==========================================
@@ -30,6 +31,14 @@ IMAGE_COLS = {
     "output_comment": "comment",
     "output_isBeverage": "isBeverage"
 }
+
+# 4. MENU TABLE Config
+MENU_TABLE_ID = "menu"
+MENU_COLS = {
+    "image_input": "menu_image",
+    "output_data": "extracted_data"
+}
+
 api_key = st.secrets.get("JAMAI_API_KEY")
 # ==========================================
 # 🔌 CLIENT INITIALIZATION
@@ -186,6 +195,89 @@ def analyze_image_with_jamai(uploaded_file):
             
     except Exception as e:
         st.error(f"❌ Image Analysis Error: {e}")
+        if os.path.exists(temp_filename):
+            os.remove(temp_filename)
+        return None
+
+# ==========================================
+# 📜 LOGIC 3: MENU ANALYZER
+# ==========================================
+# Added menu analysis function
+def analyze_menu_with_jamai(uploaded_file):
+    """
+    Sends menu image to JamAI 'menu' table and returns parsed JSON data.
+    """
+    # 1. Validation Check
+    if not api_key or not PROJECT_ID:
+        st.error("❌ Missing API Configuration. Please check your .streamlit/secrets.toml file.")
+        return None
+
+    # 2. Initialize JamAI
+    jam = JamAI(token=api_key, project_id=PROJECT_ID)
+
+    # 3. Handle File Upload
+    temp_filename = f"temp_menu_{uploaded_file.name}"
+    with open(temp_filename, "wb") as f:
+        f.write(uploaded_file.getbuffer())
+
+    try:
+        # 4. Upload File to JamAI Storage
+        upload_response = jam.file.upload_file(temp_filename)
+        image_uri = upload_response.uri
+
+        # 5. Add Row to JamAI Table
+        completion = jam.table.add_table_rows(
+            "action",
+            p.RowAddRequest(
+                table_id=MENU_TABLE_ID,
+                data=[{
+                    MENU_COLS["image_input"]: image_uri
+                }],
+                stream=False
+            )
+        )
+
+        # 6. Clean up temp file
+        if os.path.exists(temp_filename):
+            os.remove(temp_filename)
+
+        # 7. Extract Data from Response
+        if completion.rows:
+            row = completion.rows[0].columns
+            
+            # Helper to safely extract content
+            def get_val(col_name):
+                cell = row.get(col_name)
+                if not cell: return "{}"
+                if hasattr(cell, "choices") and len(cell.choices) > 0:
+                    return cell.choices[0].message.content
+                if hasattr(cell, "value"):
+                    return cell.value
+                return str(cell)
+
+            raw_json = get_val(MENU_COLS["output_data"])
+            
+            # Clean up JSON string if it contains markdown code blocks
+            raw_json = str(raw_json).strip()
+            if raw_json.startswith("```json"):
+                raw_json = raw_json[7:]
+            if raw_json.startswith("```"):
+                raw_json = raw_json[3:]
+            if raw_json.endswith("```"):
+                raw_json = raw_json[:-3]
+            
+            try:
+                parsed_data = json.loads(raw_json)
+                return parsed_data
+            except json.JSONDecodeError:
+                st.error(f"❌ Failed to parse JSON from JamAI. Raw output: {raw_json[:100]}...")
+                return None
+        else:
+            st.error("❌ JamAI returned no rows for menu analysis.")
+            return None
+            
+    except Exception as e:
+        st.error(f"❌ Menu Analysis Error: {e}")
         if os.path.exists(temp_filename):
             os.remove(temp_filename)
         return None
