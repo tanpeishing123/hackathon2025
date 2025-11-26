@@ -1,8 +1,9 @@
 import streamlit as st
 import time
-from services.jamai_service import analyze_image_with_jamai
+import services.jamai_service as jamai_service
 from scannercomponents.item_result import show_single_item_result
 from scannercomponents.menu_result import show_menu_result
+from utils.state_manager import add_intake
 
 # --- 1. ROBUST SELF-CONTAINED STATE INITIALIZATION ---
 def init_scanner_state():
@@ -13,9 +14,9 @@ def init_scanner_state():
     defaults = {
         "page": "home",            # Controls internal navigation (home/camera/upload)
         "mode": "Single Item",     # Controls Scan Mode
-        "sugar_intake": 0.0,       # Total daily sugar
         "language": "English",     # Language setting
-        "is_makcik_mode": False    # Persona setting
+        "is_makcik_mode": False,   # Persona setting
+        "scan_results": None       # Store analysis results
     }
 
     for key, value in defaults.items():
@@ -46,55 +47,102 @@ def create_action_card(col, icon_url, title, button_label, key, nav_target):
             go(nav_target)
 
 # --- HELPER: Shared Analysis Logic ---
-def run_analysis_logic(image_file, key_prefix):
+def perform_analysis(image_file):
+    """
+    Performs the analysis and stores the result in session state.
+    """
     # 1. MENU SCAN MODE
     if st.session_state.mode == "Menu Scan":
         st.success("Menu detected! Extracting items...")
-        time.sleep(1.0)
         
-        menu_data = [
-            {'name': "Signature Bubble Tea", 'grade': 'D', 'sugar_g': 42.0, 'fat_g': 12.0},
-            {'name': "Grilled Chicken Chop", 'grade': 'B', 'sugar_g': 4.0, 'fat_g': 18.0},
-            {'name': "Plain Water", 'grade': 'A', 'sugar_g': 0.0, 'fat_g': 0.0},
-            {'name': "Mee Goreng Mamak", 'grade': 'C', 'sugar_g': 12.0, 'fat_g': 22.0},
-        ]
+        # Call JamAI Menu Analysis
+        result_json = jamai_service.analyze_menu_with_jamai(image_file)
         
-        def on_add_menu(s, f):
-            st.session_state['sugar_intake'] += s
-            st.toast(f"✅ Added {s}g Sugar and {f}g Fat to your daily budget!")
-            time.sleep(1)
-            go("home")
+        # Handle different JSON keys (menuitems vs menu_items)
+        items_list = []
+        if result_json:
+            items_list = result_json.get("menuitems") or result_json.get("menu_items")
+
+        if items_list:
+            menu_data = []
+            for item in items_list:
+                # Normalize keys to match what show_menu_result expects
+                menu_data.append({
+                    'name': item.get('name', 'Unknown Item'),
+                    'grade': item.get('grade', 'C'),
+                    'sugar_g': float(item.get('sugarg', item.get('sugar_g', 0))),
+                    'fat_g': float(item.get('fatg', item.get('fat_g', 0)))
+                })
             
-        show_menu_result(menu_data, on_add_multiple_callback=on_add_menu)
+            st.session_state.scan_results = {"type": "menu", "data": menu_data}
+        else:
+            st.error("Could not analyze menu. Please try again.")
+            if result_json:
+                st.json(result_json) # Debugging aid
+            st.session_state.scan_results = None
 
     # 2. SINGLE ITEM MODE
     else:
-        result_data = analyze_image_with_jamai(image_file)
+        result_data = jamai_service.analyze_image_with_jamai(image_file)
         
         if result_data:
             # --- Check if it is a beverage ---
             if result_data.get('is_beverage') is False:
-                st.warning("⚠️ No beverage identified. Please input again.")
-                st.caption(f"Detected: {result_data.get('name', 'Unknown object')}")
-                
-                if st.button("🔄 Try Again"):
-                    st.rerun()
+                st.session_state.scan_results = {"type": "not_beverage", "data": result_data}
             else:
-                # It is a beverage, show result
-                def on_add_single(s, f):
-                    st.session_state['sugar_intake'] += s
-                    st.toast(f"✅ Added {result_data['name']} to log!")
-                    time.sleep(1)
-                    go("home")
-
-                show_single_item_result(
-                    result_data, 
-                    None, # Do not show the image again in the result card
-                    on_confirm_callback=on_add_single,
-                    key_prefix=key_prefix
-                )
+                st.session_state.scan_results = {"type": "single", "data": result_data}
         else:
             st.error("Could not analyze image. Please try again.")
+            st.session_state.scan_results = None
+
+def display_scan_results(key_prefix):
+    """
+    Displays the results stored in session state.
+    """
+    if not st.session_state.scan_results:
+        return
+
+    result_type = st.session_state.scan_results["type"]
+    data = st.session_state.scan_results["data"]
+
+    if result_type == "menu":
+        def on_add_menu(s, f):
+            # Update global state via state_manager
+            add_intake(s, f, "Menu Scan Items")
+            
+            # Set a flag for Home.py to see
+            st.session_state['last_added_item'] = "Menu Items"
+            
+            # Switch back to the main Home dashboard
+            st.switch_page("Home.py")
+            
+        show_menu_result(data, on_add_multiple_callback=on_add_menu)
+
+    elif result_type == "not_beverage":
+        st.warning("⚠️ No beverage identified. Please input again.")
+        st.caption(f"Detected: {data.get('name', 'Unknown object')}")
+        
+        if st.button("🔄 Try Again", key=f"{key_prefix}_try_again"):
+            st.session_state.scan_results = None
+            st.rerun()
+
+    elif result_type == "single":
+        def on_add_single(s, f):
+            # Update global state via state_manager
+            add_intake(s, f, data['name'])
+            
+            # Set a flag for Home.py to see
+            st.session_state['last_added_item'] = data['name']
+            
+            # Switch back to the main Home dashboard
+            st.switch_page("Home.py")
+
+        show_single_item_result(
+            data, 
+            None, # Do not show the image again in the result card
+            on_confirm_callback=on_add_single,
+            key_prefix=key_prefix
+        )
 
 
 # --- PAGE: HOME ---
@@ -123,10 +171,15 @@ if st.session_state.page == "home":
     """, unsafe_allow_html=True)
 
     st.markdown("### Choose Analysis Mode")
+    
+    def on_mode_change():
+        st.session_state.scan_results = None
+
     st.session_state.mode = st.radio(
         "Select Mode:", ["Single Item", "Menu Scan"],
         index=0 if st.session_state.mode == "Single Item" else 1,
-        horizontal=True, label_visibility="collapsed"
+        horizontal=True, label_visibility="collapsed",
+        on_change=on_mode_change
     )
 
     st.write("")
@@ -149,7 +202,10 @@ elif st.session_state.page == "camera":
         st.write("---")
         if st.button("🔍 Analyze Beverage", type="primary", use_container_width=True):
              with st.spinner(f"Analyzing in {st.session_state.mode} mode..."):
-                run_analysis_logic(img, key_prefix="cam_result")
+                perform_analysis(img)
+        
+        # Display results if they exist
+        display_scan_results(key_prefix="cam_result")
 
 
 # --- PAGE: UPLOAD ---
@@ -167,4 +223,7 @@ elif st.session_state.page == "upload":
         st.write("---")
         if st.button("🔍 Analyze Beverage", type="primary", use_container_width=True):
             with st.spinner(f"Analyzing in {st.session_state.mode} mode..."):
-                run_analysis_logic(img, key_prefix="up_result")
+                perform_analysis(img)
+        
+        # Display results if they exist
+        display_scan_results(key_prefix="up_result")
