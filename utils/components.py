@@ -33,16 +33,21 @@ def calculate_diabetes_risk(bmi, daily_sugar_grams):
     # 4. Final Calculation
     total_risk = base_risk * (1 + sugar_risk_increase)
     
-    # 5. Extra: Walking & Weight Gain
-    # 1g sugar = 4 kcal. Walking 1 step burns approx 0.04 kcal.
-    steps_needed = int(daily_sugar_grams * 100)
+    # 5. Limit Percentage (for display)
+    limit_pct = (daily_sugar_grams / 50.0) * 100
+
+    # 6. Extra: Walking & Weight Gain
+    # Future Weight Gain (Total sugar contribution to weight)
+    # 7700kcal = 1kg fat. 1g sugar = 4kcal.
+    yearly_gain = (daily_sugar_grams * 4 * 365) / 7700 
     
-    # Weight Gain: (Daily Surplus * 365) / 7700 kcal per kg fat
-    yearly_gain = (daily_sugar_grams * 4 * 365) / 7700
+    # Steps to burn: 1g sugar = 4 kcal. Walking 1 step burns approx 0.04 kcal.
+    steps_needed = int((daily_sugar_grams * 4) / 0.04)
     
     return {
         "risk_score": round(total_risk, 1),
-        "sugar_increase_pct": int(sugar_risk_increase * 100),
+        "sugar_increase_pct": int(sugar_risk_increase * 100), # Kept for backward compatibility if needed, but limit_pct is preferred for display
+        "limit_pct": round(limit_pct, 1),
         "bmi_status": bmi_status,
         "steps_needed": steps_needed,
         "yearly_gain": round(yearly_gain, 1)

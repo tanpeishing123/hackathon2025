@@ -30,6 +30,9 @@ def init_session_state():
 
 def add_intake(sugar, fat, name):
     """add intake"""
+    # Ensure state is initialized
+    init_session_state()
+    
     st.session_state.sugar_today += sugar
     st.session_state.fat_today += fat
     st.session_state.sugar_month_total += sugar
@@ -51,6 +54,7 @@ def delete_intake(item_id):
             st.session_state.sugar_today -= item['sugar']
             st.session_state.fat_today -= item.get('fat', 0) # Handle old records without fat
             st.session_state.sugar_month_total -= item['sugar']
+            st.session_state.fat_month_total -= item.get('fat', 0)
             
             # delete  list
             st.session_state.history.pop(i)

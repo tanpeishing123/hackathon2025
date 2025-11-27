@@ -1,11 +1,31 @@
 import streamlit as st
 
+# --- TRANSLATIONS ---
+TRANS = {
+    "English": {
+        "title": "SUGAR",
+        "legend": "1 Cube = 4g",
+        "none": "No significant sugar detected.",
+        "unit": "cubes"
+    },
+    "Malay": {
+        "title": "GULA",
+        "legend": "1 Kiub = 4g",
+        "none": "Tiada gula dikesan.",
+        "unit": "kiub"
+    }
+}
+
 def display_sugarcube_visual(grams):
     """
     Displays the Sugar Cube visualization component.
     Accurate to 1/4 of a cube (approx 1g).
     High contrast version.
     """
+    # Get Language
+    lang = st.session_state.get('lang', 'English')
+    t = TRANS[lang]
+
     CUBE_SIZE = 4.0
     full_cubes = int(grams // CUBE_SIZE)
     remainder = grams % CUBE_SIZE
@@ -37,7 +57,7 @@ def display_sugarcube_visual(grams):
     elif partial_type == 'three_quarter': cubes_html += f'<div style="{three_quarter_style}" title="~3g"></div>'
     
     if full_cubes == 0 and partial_type is None:
-        cubes_html = '<span style="color: #64748B; font-size: 14px; font-style: italic;">No significant sugar detected.</span>'
+        cubes_html = f'<span style="color: #64748B; font-size: 14px; font-style: italic;">{t["none"]}</span>'
 
     total_cubes_display = full_cubes
     if partial_type == 'quarter': total_cubes_display += 0.25
@@ -48,16 +68,16 @@ def display_sugarcube_visual(grams):
 <div style="background-color: #F1F5F9; padding: 16px; border-radius: 12px; border: 1px solid #CBD5E1; margin-bottom: 20px;">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
         <h3 style="color: #334155; font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin: 0;">
-            SUGAR
+            {t['title']}
         </h3>
         <span style="background-color: #E2E8F0; color: #334155; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: bold;">
-            1 Cube = 4g
+            {t['legend']}
         </span>
     </div>
     <div style="display: flex; flex-wrap: wrap; gap: 4px; align-items: center;">{cubes_html}</div>
     <p style="margin-top: 12px; font-size: 14px; color: #475569; font-weight: 500;">
         <span style="font-size: 18px; font-weight: 700; color: #0F172A;">{grams}g</span> 
-        <span style="color: #64748B;">≈ {total_cubes_display} cubes</span>
+        <span style="color: #64748B;">≈ {total_cubes_display} {t['unit']}</span>
     </p>
 </div>
 """, unsafe_allow_html=True)
