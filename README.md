@@ -93,6 +93,7 @@ The main objectives are to support the Health Ministry's new Nutri-Grade policy 
 
 ### Demo Video:[Video](https://drive.google.com/file/d/1OU2xREmFAbj7BvUoqywbb9lh0KiaNWSn/view?usp=sharing)   
 ### Slides: [Cek Manis](https://www.canva.com/design/DAG5y2ExALo/Nac_p8XBLmmMn3Xilswy9g/edit)
+### Project prototype link: [App](https://hackathon2025git-j8owsdhzunxkbm5sekzp72.streamlit.app/)
 ---
 ## 👤Special Thanks
 Hi, We are from Team Get EXP.  
