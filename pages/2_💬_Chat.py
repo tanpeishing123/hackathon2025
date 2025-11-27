@@ -232,10 +232,15 @@ if 'chat_prompt' in st.session_state and st.session_state.chat_prompt:
     display_message("user", auto_prompt)
     st.session_state.messages.append({"role": "user", "content": auto_prompt})
 
+    # Prepare prompt for AI (Add hidden instruction for Mak Cik in English mode)
+    final_prompt = auto_prompt
+    if lang == "English" and current_table_id == "chat2":
+        final_prompt = f"{auto_prompt} (Please answer in English)"
+
     # B. Call Backend Logic
     with st.spinner(t['spinner']):
         try:
-            response = chat_with_jamai(auto_prompt, table_id=current_table_id, language=lang)
+            response = chat_with_jamai(final_prompt, table_id=current_table_id, language=lang)
         except Exception as e:
             response = t['error'].format(e)
 
@@ -250,10 +255,15 @@ if prompt := st.chat_input(t['input_ph']):
     display_message("user", prompt)
     st.session_state.messages.append({"role": "user", "content": prompt})
 
+    # Prepare prompt for AI (Add hidden instruction for Mak Cik in English mode)
+    final_prompt = prompt
+    if lang == "English" and current_table_id == "chat2":
+        final_prompt = f"{prompt} (Please answer in English)"
+
     # B. Call Backend Logic (The "Simplified" part)
     with st.spinner(t['spinner']):
         try:
-            response = chat_with_jamai(prompt, table_id=current_table_id, language=lang)
+            response = chat_with_jamai(final_prompt, table_id=current_table_id, language=lang)
         except Exception as e:
             response = t['error'].format(e)
 
