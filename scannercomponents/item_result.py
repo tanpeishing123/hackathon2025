@@ -108,16 +108,27 @@ def show_single_item_result(data, image_file, on_confirm_callback=None, key_pref
     if alt_key not in st.session_state:
         st.session_state[alt_key] = False
 
+    # State for added button
+    added_key = f"{key_prefix}_added"
+    if added_key not in st.session_state:
+        st.session_state[added_key] = False
+
     # Buttons
-    add_disabled = st.session_state[alt_key]
+    # Disable "Drink Anyway" if Alternative is shown OR if already added
+    add_disabled = st.session_state[alt_key] or st.session_state[added_key]
+    
+    # Disable "Find Alternative" if "Drink Anyway" was pressed
+    alt_disabled = st.session_state[added_key]
     
     if st.button(t['btn_drink_anyway'], type="primary", use_container_width=True, key=f"{key_prefix}_btn_add", disabled=add_disabled):
+        st.session_state[added_key] = True # Mark as added
         if on_confirm_callback:
             on_confirm_callback(data['sugar_g'], data['fat_g'])
         else:
             st.success(t['msg_added'].format(data['name']))
+        st.rerun()
 
-    if st.button(t['btn_find_alt'], use_container_width=True, key=f"{key_prefix}_btn_alt"):
+    if st.button(t['btn_find_alt'], use_container_width=True, key=f"{key_prefix}_btn_alt", disabled=alt_disabled):
         st.session_state[alt_key] = True
         st.rerun()
         

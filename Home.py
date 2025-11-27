@@ -218,7 +218,7 @@ TRANS = {
         "history_title": "Consumption History",
         "history_empty": "No items added yet.",
         "btn_delete": "Del",
-        "btn_scan": "📸 Scan Food Now",
+        "btn_scan": "📸 Scan Beverage Now",
         "toast_added": "Added",
         "sw_kosong": "No Sugar",
         "sw_less": "Less Sugar",
@@ -277,7 +277,7 @@ TRANS = {
         "history_title": "Sejarah Pengambilan",
         "history_empty": "Tiada rekod lagi.",
         "btn_delete": "Padam",
-        "btn_scan": "📸 Imbas Makanan Sekarang",
+        "btn_scan": "📸 Imbas Minuman Sekarang",
         "toast_added": "Ditambah",
         "sw_kosong": "Kosong",
         "sw_less": "Kurang Manis",
@@ -362,12 +362,12 @@ with c1:
         <div style="display: flex; justify-content: space-around; margin-top: 10px; border-top: 1px solid #f1f5f9; padding-top: 12px;">
             <div style="text-align: center;">
                 <div style="font-size: 0.8rem; color: #64748b; font-weight: 600;">{t['daily_left']}</div>
-                <div style="font-size: 1.2rem; font-weight: 800; color: {day_color};">{rem_day_sugar}g</div>
+                <div style="font-size: 1.2rem; font-weight: 800; color: {day_color};">{rem_day_sugar:.1f}g</div>
             </div>
             <div style="border-right: 1px solid #e2e8f0;"></div>
             <div style="text-align: center;">
                 <div style="font-size: 0.8rem; color: #64748b; font-weight: 600;">{t['monthly_left']}</div>
-                <div style="font-size: 1.2rem; font-weight: 800; color: #0f172a;">{rem_month_sugar}g</div>
+                <div style="font-size: 1.2rem; font-weight: 800; color: #0f172a;">{rem_month_sugar:.1f}g</div>
             </div>
         </div>
         """, unsafe_allow_html=True)
@@ -385,12 +385,12 @@ with c2:
         <div style="display: flex; justify-content: space-around; margin-top: 10px; border-top: 1px solid #f1f5f9; padding-top: 12px;">
             <div style="text-align: center;">
                 <div style="font-size: 0.8rem; color: #64748b; font-weight: 600;">{t['daily_left']}</div>
-                <div style="font-size: 1.2rem; font-weight: 800; color: #0f172a;">{rem_day_fat}g</div>
+                <div style="font-size: 1.2rem; font-weight: 800; color: #0f172a;">{rem_day_fat:.1f}g</div>
             </div>
             <div style="border-right: 1px solid #e2e8f0;"></div>
             <div style="text-align: center;">
                 <div style="font-size: 0.8rem; color: #64748b; font-weight: 600;">{t['monthly_left']}</div>
-                <div style="font-size: 1.2rem; font-weight: 800; color: #0f172a;">{rem_month_fat}g</div>
+                <div style="font-size: 1.2rem; font-weight: 800; color: #0f172a;">{rem_month_fat:.1f}g</div>
             </div>
         </div>
         """, unsafe_allow_html=True)

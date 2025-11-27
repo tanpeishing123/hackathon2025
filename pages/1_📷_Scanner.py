@@ -178,6 +178,22 @@ t = TRANS[lang]
 def go(page):
     st.session_state.page = page
 
+def clear_results():
+    st.session_state.scan_results = None
+
+def reset_scanner_ui_state():
+    """
+    Resets the UI state for scanner results (Ask AI, Find Alternative, Added status)
+    to ensure a clean slate when switching modes.
+    """
+    prefixes = ["manual_result", "cam_result", "up_result"]
+    suffixes = ["_show_alt", "_ask_ai_mode", "_added"]
+    for p in prefixes:
+        for s in suffixes:
+            key = f"{p}{s}"
+            if key in st.session_state:
+                del st.session_state[key]
+
 # --- HELPER: Action Card ---
 def create_action_card(col, icon_url, title, button_label, key, nav_target):
     with col:
@@ -235,10 +251,13 @@ def perform_analysis(image_file, multiplier=1.0):
 
     # 1. MENU SCAN MODE
     if st.session_state.mode == "Menu Scan":
-        st.success("Menu detected! Extracting items...")
+        status_msg = st.empty()
+        status_msg.success("Menu detected! Extracting items...")
         
         # Call JamAI Menu Analysis
         result_json = jamai_service.analyze_menu_with_jamai(image_file)
+        
+        status_msg.empty()
         
         # Handle different JSON keys (menuitems vs menu_items)
         items_list = []
@@ -389,18 +408,21 @@ if st.session_state.page == "home":
         if st.button(t['tab_label'], use_container_width=True, type="primary" if st.session_state.mode == "Nutrition Label" else "secondary"):
             st.session_state.mode = "Nutrition Label"
             st.session_state.scan_results = None
+            reset_scanner_ui_state()
             st.rerun()
             
     with t_col2:
         if st.button(t['tab_fresh'], use_container_width=True, type="primary" if st.session_state.mode == "Fresh Drinks" else "secondary"):
             st.session_state.mode = "Fresh Drinks"
             st.session_state.scan_results = None
+            reset_scanner_ui_state()
             st.rerun()
             
     with t_col3:
         if st.button(t['tab_menu'], use_container_width=True, type="primary" if st.session_state.mode == "Menu Scan" else "secondary"):
             st.session_state.mode = "Menu Scan"
             st.session_state.scan_results = None
+            reset_scanner_ui_state()
             st.rerun()
 
     st.write("")
@@ -435,11 +457,11 @@ if st.session_state.page == "home":
                     result = jamai_service.analyze_manual_input_with_jamai(drink_input, multiplier, language=lang)
                     
                     if result:
-                        st.session_state.scan_results = {"type": "single", "data": result}
+                        st.session_state.scan_results = {"type": "single", "data": result, "source": "manual"}
                         st.rerun()
 
         # Display results if they exist (using the standard display function)
-        if st.session_state.scan_results and st.session_state.scan_results.get("type") == "single" and "Manual" in st.session_state.scan_results["data"]["name"]:
+        if st.session_state.scan_results and st.session_state.scan_results.get("type") == "single" and st.session_state.scan_results.get("source") == "manual":
              display_scan_results(key_prefix="manual_result")
 
 
@@ -474,7 +496,7 @@ elif st.session_state.page == "camera":
         multiplier = 1.0
         if st.session_state.mode == "Fresh Drinks":
             st.markdown(t['adjust_sweet'])
-            sweetness_pct = st.slider(t['slider_label'], min_value=0, max_value=150, value=100, step=25, key="cam_slider")
+            sweetness_pct = st.slider(t['slider_label'], min_value=0, max_value=150, value=100, step=25, key="cam_slider", on_change=clear_results)
             
             if sweetness_pct == 0: label = t['s_no']
             elif sweetness_pct == 25: label = t['s_less25']
@@ -535,7 +557,7 @@ elif st.session_state.page == "upload":
         multiplier = 1.0
         if st.session_state.mode == "Fresh Drinks":
             st.markdown(t['adjust_sweet'])
-            sweetness_pct = st.slider(t['slider_label'], min_value=0, max_value=150, value=100, step=25, key="up_slider")
+            sweetness_pct = st.slider(t['slider_label'], min_value=0, max_value=150, value=100, step=25, key="up_slider", on_change=clear_results)
             
             if sweetness_pct == 0: label = t['s_no']
             elif sweetness_pct == 25: label = t['s_less25']

@@ -57,7 +57,7 @@ DRINK_COLS = {
     "output_fat": "saturated_fat",
     "output_grade": "grade",
     "output_comment": "Comment",
-    "output_alternative": "alternative"
+    "output_alternative": "Alternative"
 }
 
 # 6. MANUAL INPUT TABLE Config
@@ -481,7 +481,7 @@ def analyze_manual_input_with_jamai(text, multiplier=1.0, language="English"):
             if fat_serv == 0 and fat_100 > 0: fat_serv = fat_100 * 2.5
 
             return {
-                "name": f"{text} (Manual)",
+                "name": f"{text}",
                 "grade": grade,
                 "sugar_g": sugar_serv,
                 "fat_g": fat_serv,
