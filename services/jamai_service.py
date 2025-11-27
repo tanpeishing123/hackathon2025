@@ -10,7 +10,7 @@ from jamaibase import JamAI, types as p
 # ==========================================
 
 # 1. Project Credentials
-PROJECT_ID = "proj_9a8190b20789a318daf028ae" 
+PROJECT_ID = st.secrets.get("JAMAI_PROJECT_ID") 
 
 # 2. CHAT TABLE Config
 CHAT_TABLE_ID = "chat"
