@@ -1,10 +1,30 @@
 import streamlit as st
 
+# --- TRANSLATIONS ---
+TRANS = {
+    "English": {
+        "title": "SATURATED FAT",
+        "legend": "1 Tsp = 5g",
+        "none": "Low fat content.",
+        "unit": "tsp oil"
+    },
+    "Malay": {
+        "title": "LEMAK TEPU",
+        "legend": "1 Sudu Teh = 5g",
+        "none": "Kandungan lemak rendah.",
+        "unit": "sudu teh minyak"
+    }
+}
+
 def display_fat_visual(grams):
     """
     Displays the Saturated Fat visualization (Oil Droplets).
     1 Droplet (Teaspoon) approx 5g.
     """
+    # Get Language
+    lang = st.session_state.get('lang', 'English')
+    t = TRANS[lang]
+
     TEASPOON_SIZE = 5.0 # 5g per tsp
     full_drops = int(grams // TEASPOON_SIZE)
     remainder = grams % TEASPOON_SIZE
@@ -43,7 +63,7 @@ def display_fat_visual(grams):
         drops_html += f"""<div style="width: 24px; height: 24px; margin: 2px; filter: drop-shadow(1px 1px 1px rgba(0,0,0,0.1));" title="~3.75g"><svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="grad_fat_75"><stop offset="75%" stop-color="#FACC15"/><stop offset="75%" stop-color="#FEFCE8"/></linearGradient></defs><path d="{path}" fill="url(#grad_fat_75)" stroke="#B45309" stroke-width="1.5"/></svg></div>"""
 
     if full_drops == 0 and partial_type is None:
-        drops_html = '<span style="color: #94A3B8; font-size: 14px; font-style: italic;">Low fat content.</span>'
+        drops_html = f'<span style="color: #94A3B8; font-size: 14px; font-style: italic;">{t["none"]}</span>'
 
     total_tsp_display = full_drops
     if partial_type == 'quarter': total_tsp_display += 0.25
@@ -54,13 +74,13 @@ def display_fat_visual(grams):
     st.markdown(f"""
 <div style="background-color: #FEFCE8; padding: 16px; border-radius: 12px; border: 1px solid #FEF08A; margin-bottom: 20px;">
 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-<h3 style="color: #854D0E; font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin: 0;">SATURATED FAT</h3>
-<span style="background-color: #FFF9C4; color: #854D0E; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: bold;">1 Tsp = 5g</span>
+<h3 style="color: #854D0E; font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin: 0;">{t['title']}</h3>
+<span style="background-color: #FFF9C4; color: #854D0E; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: bold;">{t['legend']}</span>
 </div>
 <div style="display: flex; flex-wrap: wrap; gap: 4px; align-items: center;">{drops_html}</div>
 <p style="margin-top: 12px; font-size: 14px; color: #713F12; font-weight: 500;">
 <span style="font-size: 18px; font-weight: 700; color: #422006;">{grams}g</span> 
-<span style="color: #A16207;">≈ {total_tsp_display} tsp oil</span>
+<span style="color: #A16207;">≈ {total_tsp_display} {t['unit']}</span>
 </p>
 </div>
 """, unsafe_allow_html=True)
